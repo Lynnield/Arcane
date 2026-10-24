@@ -19,11 +19,14 @@ const APEX_GRAVITY_SCALE := 0.6
 ## Extra jumps allowed in the air (pressing jump again while airborne).
 const AIR_JUMPS := 1
 const DOUBLE_JUMP_VELOCITY := -290.0
-const COYOTE_TIME := 0.1
+const COYOTE_TIME := 0.12
+## Releasing jump only shortens it after this long, so a quick tap still
+## gives a useful hop (about 3 tiles) instead of a tiny one.
+const MIN_JUMP_HOLD := 0.12
 ## A rising jump that clips a ceiling corner by up to this many pixels slides
 ## around it instead of stopping dead.
 const CORNER_CORRECTION := 6
-const JUMP_BUFFER := 0.12
+const JUMP_BUFFER := 0.15
 const PLAYER_MAX_HEALTH := 100
 
 # Pull-back aiming (viewport pixels)

@@ -53,6 +53,7 @@ var visual: WizardVisual
 
 var _coyote := 0.0
 var _air_jumps := 0
+var _jump_time := 0.0
 var _dash_time := 0.0
 var _dash_dir := 0.0
 var _jump_buffer := 0.0
@@ -124,6 +125,7 @@ func _physics_process(delta: float) -> void:
 	velocity.y = minf(velocity.y + gravity * delta, Tuning.MAX_FALL_SPEED)
 	if _jump_buffer > 0.0 and _coyote > 0.0:
 		velocity.y = Tuning.JUMP_VELOCITY
+		_jump_time = 0.0
 		_jump_buffer = 0.0
 		_coyote = 0.0
 		Sfx.play("jump")
@@ -131,12 +133,14 @@ func _physics_process(delta: float) -> void:
 	elif want_jump and _coyote <= 0.0 and _air_jumps > 0:
 		# A fresh press while airborne spends one air jump.
 		velocity.y = Tuning.DOUBLE_JUMP_VELOCITY
+		_jump_time = 0.0
 		_air_jumps -= 1
 		_jump_buffer = 0.0
 		Sfx.play("double_jump")
 		double_jumped.emit()
-	# Releasing jump early gives a shorter hop.
-	if velocity.y < 0.0 and not holding_jump:
+	# Releasing jump early gives a shorter hop, but never shorter than a tap.
+	_jump_time += delta
+	if velocity.y < 0.0 and not holding_jump and _jump_time > Tuning.MIN_JUMP_HOLD:
 		velocity.y += Tuning.PLAYER_GRAVITY * delta
 
 	var accel := Tuning.PLAYER_ACCEL
