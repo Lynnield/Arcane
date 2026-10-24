@@ -1,0 +1,218 @@
+class_name Player
+extends CharacterBody2D
+## The wizard. A local player reads TouchControls plus keyboard; a remote PvP
+## player is driven by network state. Origin is at the feet.
+
+signal health_changed(current: int, maximum: int)
+signal died
+signal fired(origin: Vector2, velocity: Vector2)
+
+const ORB_SCENE := preload("res://scenes/magic_orb.tscn")
+const HAND := Vector2(5, -11)
+const WAND_LENGTH := 8.0
+
+@export var robe_color := Color("6b4fd8")
+@export var trim_color := Color("f2c14e")
+
+var max_health := Tuning.PLAYER_MAX_HEALTH
+var health := Tuning.PLAYER_MAX_HEALTH
+var controls: TouchControls
+var is_local := true
+var can_act := true
+var show_marker := false
+## Campaign: spawn orbs directly. PvP: only emit `fired`; the host spawns them.
+var spawn_orbs_locally := true
+var orb_mask := OrbPhysics.MASK_WORLD | OrbPhysics.MASK_ENEMY
+var orb_damage := Tuning.ORB_DAMAGE
+var orb_color := Color("8fe3ff")
+var peer_id := 1
+
+var facing := 1
+var aiming := false
+var aim_velocity := Vector2.ZERO
+var invulnerable := 0.0
+
+var _coyote := 0.0
+var _jump_buffer := 0.0
+var _cooldown := 0.0
+var _hurt_flash := 0.0
+var _anim := 0.0
+var _remote_target := Vector2.ZERO
+var _exclude: Array[RID] = []
+var _preview: TrajectoryPreview
+
+
+func _ready() -> void:
+	collision_layer = OrbPhysics.MASK_PLAYER
+	collision_mask = OrbPhysics.MASK_WORLD
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(10, 20)
+	shape.shape = rect
+	shape.position = Vector2(0, -10)
+	add_child(shape)
+	_exclude.append(get_rid())
+	_preview = TrajectoryPreview.new()
+	add_child(_preview)
+	_remote_target = global_position
+	if controls:
+		controls.fire_requested.connect(try_fire)
+
+
+func _physics_process(delta: float) -> void:
+	_anim += delta
+	invulnerable = maxf(invulnerable - delta, 0.0)
+	_hurt_flash = maxf(_hurt_flash - delta, 0.0)
+	_cooldown = maxf(_cooldown - delta, 0.0)
+	modulate.a = 0.35 if invulnerable > 0.0 and int(invulnerable * 12.0) % 2 == 0 else 1.0
+
+	if not is_local:
+		global_position = global_position.lerp(_remote_target, minf(1.0, delta * 15.0))
+		queue_redraw()
+		return
+
+	var axis := 0.0
+	var want_jump := false
+	var holding_jump := false
+	var touch_jump := controls != null and controls.consume_jump()
+	if can_act:
+		axis = Input.get_axis("move_left", "move_right")
+		if controls and is_zero_approx(axis):
+			axis = controls.move_axis()
+		want_jump = Input.is_action_just_pressed("jump") or touch_jump
+		holding_jump = Input.is_action_pressed("jump") or (controls != null and controls.jump_held)
+
+	_jump_buffer = Tuning.JUMP_BUFFER if want_jump else _jump_buffer - delta
+	_coyote = Tuning.COYOTE_TIME if is_on_floor() else _coyote - delta
+
+	velocity.y = minf(velocity.y + Tuning.PLAYER_GRAVITY * delta, Tuning.MAX_FALL_SPEED)
+	if _jump_buffer > 0.0 and _coyote > 0.0:
+		velocity.y = Tuning.JUMP_VELOCITY
+		_jump_buffer = 0.0
+		_coyote = 0.0
+		Sfx.play("jump")
+	# Releasing jump early gives a shorter hop.
+	if velocity.y < 0.0 and not holding_jump:
+		velocity.y += Tuning.PLAYER_GRAVITY * delta
+
+	velocity.x = move_toward(velocity.x, axis * Tuning.PLAYER_SPEED, Tuning.PLAYER_ACCEL * delta)
+	move_and_slide()
+	if absf(axis) > 0.1:
+		facing = 1 if axis > 0.0 else -1
+	_update_aim()
+	queue_redraw()
+
+
+func _update_aim() -> void:
+	aiming = can_act and controls != null and controls.is_aiming()
+	aim_velocity = OrbPhysics.launch_velocity(controls.aim_drag()) if aiming else Vector2.ZERO
+	if aim_velocity == Vector2.ZERO:
+		_preview.clear()
+		return
+	if absf(aim_velocity.x) > 1.0:
+		facing = 1 if aim_velocity.x > 0.0 else -1
+	_preview.show_path(wand_tip(aim_velocity), aim_velocity, orb_mask, _exclude)
+
+
+## Where the orb spawns: the tip of the wand, pointing along `direction`.
+func wand_tip(direction: Vector2) -> Vector2:
+	var f := facing
+	if absf(direction.x) > 1.0:
+		f = 1 if direction.x > 0.0 else -1
+	return global_position + Vector2(HAND.x * f, HAND.y) + direction.normalized() * WAND_LENGTH
+
+
+func try_fire(drag: Vector2) -> void:
+	if not can_act or _cooldown > 0.0 or health <= 0:
+		return
+	var vel := OrbPhysics.launch_velocity(drag)
+	if vel == Vector2.ZERO:
+		return
+	if absf(vel.x) > 1.0:
+		facing = 1 if vel.x > 0.0 else -1
+	_cooldown = Tuning.FIRE_COOLDOWN
+	var origin := wand_tip(vel)
+	Sfx.play("shoot")
+	fired.emit(origin, vel)
+	if spawn_orbs_locally:
+		var orb := ORB_SCENE.instantiate() as MagicOrb
+		orb.setup(origin, vel, orb_mask, _exclude, orb_damage, self, orb_color)
+		get_parent().add_child(orb)
+
+
+func take_damage(amount: int, _source: Node = null) -> void:
+	if invulnerable > 0.0 or health <= 0:
+		return
+	set_health(health - amount)
+
+
+func set_health(value: int) -> void:
+	var previous := health
+	health = clampi(value, 0, max_health)
+	if health < previous:
+		_hurt_flash = 0.15
+		Sfx.play("hurt")
+	health_changed.emit(health, max_health)
+	if health == 0 and previous > 0:
+		died.emit()
+
+
+func reset_health() -> void:
+	health = max_health
+	health_changed.emit(health, max_health)
+
+
+func respawn(at: Vector2) -> void:
+	teleport(at)
+	invulnerable = Tuning.RESPAWN_PROTECTION
+
+
+func teleport(at: Vector2) -> void:
+	global_position = at
+	_remote_target = at
+	velocity = Vector2.ZERO
+
+
+func set_remote_state(pos: Vector2, vel: Vector2, new_facing: int, is_aiming: bool, aim_vel: Vector2) -> void:
+	_remote_target = pos
+	velocity = vel
+	facing = 1 if new_facing >= 0 else -1
+	aiming = is_aiming
+	aim_velocity = aim_vel
+
+
+func _draw() -> void:
+	var f := float(facing)
+	var robe := Color.WHITE if _hurt_flash > 0.0 else robe_color
+	var dark := robe.darkened(0.35)
+	var skin := Color("f1c7a0")
+	var bob := 0.0
+	if absf(velocity.x) > 10.0 and absf(velocity.y) < 1.0 and int(_anim * 10.0) % 2 == 0:
+		bob = -1.0
+
+	# Robe and feet
+	draw_rect(Rect2(-4, -1, 3, 1), Color("2a1f3d"))
+	draw_rect(Rect2(1, -1, 3, 1), Color("2a1f3d"))
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-6, -1), Vector2(6, -1), Vector2(4, -12 + bob), Vector2(-4, -12 + bob)]), robe)
+	draw_rect(Rect2(-6, -3, 12, 2), trim_color)
+	draw_rect(Rect2(-4, -8 + bob, 8, 1), trim_color)
+	# Head
+	draw_rect(Rect2(-3, -18 + bob, 6, 6), skin)
+	draw_rect(Rect2(1.0 if f > 0.0 else -2.0, -16 + bob, 1, 2), Color("1b1530"))
+	draw_rect(Rect2(-3, -13 + bob, 6, 2), Color("e8e4f0"))
+	# Hat
+	draw_rect(Rect2(-6, -19 + bob, 12, 2), dark)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-4, -19 + bob), Vector2(4, -19 + bob), Vector2(-3.0 * f, -29 + bob)]), robe)
+	draw_rect(Rect2(-1.0 * f - 0.5, -24 + bob, 1, 1), trim_color)
+	# Wand
+	var dir := aim_velocity.normalized() if aiming and aim_velocity != Vector2.ZERO else Vector2(0.6 * f, -0.8).normalized()
+	var hand := Vector2(HAND.x * f, HAND.y + bob)
+	draw_line(hand, hand + dir * WAND_LENGTH, Color("8a5a32"), 2.0)
+	var glow := orb_color if aiming else orb_color.darkened(0.3)
+	draw_circle(hand + dir * WAND_LENGTH, 3.0 if aiming else 2.0, Color(glow, 0.5))
+	draw_circle(hand + dir * WAND_LENGTH, 1.2, Color.WHITE)
+	if show_marker:
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(-3, -36), Vector2(3, -36), Vector2(0, -32)]), Color("f2c14e"))
