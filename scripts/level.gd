@@ -108,6 +108,7 @@ func _spawn_enemy(kind: String, tile: Vector2i) -> void:
 			boss.orb_speed = Tuning.BOSS_ORB_SPEED
 			boss.speed = Tuning.BOSS_SPEED
 			boss.hops = true
+			boss.telegraph = 0.3
 			boss.body_size = Vector2(26, 30)
 			boss.body_color = Color("8a7560")
 			enemy = boss

@@ -16,6 +16,8 @@ const ORB_SCENE := preload("res://scenes/magic_orb.tscn")
 @export var orb_speed := Tuning.ENEMY_ORB_SPEED
 @export var body_size := Vector2(14, 16)
 @export var body_color := Color("9b59d0")
+## Seconds an enemy glows as a warning before each shot.
+@export var telegraph := 0.45
 
 var health := 0
 var target: Player
@@ -25,6 +27,9 @@ var facing := -1
 var _cooldown := 0.0
 var _flash := 0.0
 var _anim := 0.0
+var _charge := -1.0
+var _scale := Vector2.ONE
+var _scale_vel := Vector2.ZERO
 var _exclude: Array[RID] = []
 
 
@@ -51,11 +56,36 @@ func _physics_process(delta: float) -> void:
 	_move(delta)
 	move_and_slide()
 	if can_shoot and is_instance_valid(target) and target.health > 0:
-		_cooldown -= delta
-		if _cooldown <= 0.0:
-			# Retry soon when no clear shot exists.
-			_cooldown = fire_cooldown if _try_shoot() else 0.4
+		if _charge >= 0.0:
+			# Wind-up: fire at the end, re-aimed at where the wizard is now.
+			_charge += delta
+			if _charge >= telegraph:
+				_charge = -1.0
+				_cooldown = fire_cooldown if _try_shoot() else 0.4
+		else:
+			_cooldown -= delta
+			if _cooldown <= 0.0:
+				# Only wind up when a clear shot exists; otherwise retry soon.
+				if _find_shot() != Vector2.ZERO:
+					_charge = 0.0
+				else:
+					_cooldown = 0.4
+	else:
+		_charge = -1.0
+	_animate(delta)
 	queue_redraw()
+
+
+func _animate(delta: float) -> void:
+	var target_scale := Vector2(1.0, 1.0 + 0.035 * sin(_anim * 3.0))
+	if _charge >= 0.0:
+		var k := _charge / telegraph
+		target_scale = Vector2(1.0 - 0.08 * k, 1.0 + 0.1 * k)
+	elif absf(velocity.x) > 1.0:
+		target_scale = Vector2(1.0, 1.0 + 0.06 * absf(sin(_anim * 9.0)))
+	_scale_vel += ((target_scale - _scale) * 240.0 - _scale_vel * 14.0) * delta
+	_scale += _scale_vel * delta
+	_scale = _scale.clamp(Vector2(0.7, 0.7), Vector2(1.3, 1.3))
 
 
 ## Overridden by subclasses. Stationary by default.
@@ -67,11 +97,12 @@ func eye_position() -> Vector2:
 	return global_position + Vector2(0, -body_size.y * 0.65)
 
 
-func _try_shoot() -> bool:
+## Launch velocity of a clear shot at the wizard, or ZERO if there is none.
+func _find_shot() -> Vector2:
 	var from := eye_position()
 	var to := target.global_position + Vector2(0, -10)
 	if from.distance_to(to) > sight:
-		return false
+		return Vector2.ZERO
 	var space := get_world_2d().direct_space_state
 	for high_arc in [false, true]:
 		var vel := OrbPhysics.solve_launch(from, to, orb_speed, high_arc)
@@ -79,12 +110,20 @@ func _try_shoot() -> bool:
 			continue
 		var path := OrbPhysics.simulate(space, from, vel, OrbPhysics.MASK_WORLD | OrbPhysics.MASK_PLAYER, _exclude, 2.5)
 		if path[path.size() - 1].distance_to(to) < 18.0:
-			var orb := ORB_SCENE.instantiate() as MagicOrb
-			orb.setup(from, vel, OrbPhysics.MASK_WORLD | OrbPhysics.MASK_PLAYER, _exclude, Tuning.ENEMY_ORB_DAMAGE, self, Color("ff6b4a"))
-			get_parent().add_child(orb)
-			Sfx.play("enemy_shoot")
-			return true
-	return false
+			return vel
+	return Vector2.ZERO
+
+
+func _try_shoot() -> bool:
+	var vel := _find_shot()
+	if vel == Vector2.ZERO:
+		return false
+	var orb := ORB_SCENE.instantiate() as MagicOrb
+	orb.setup(eye_position(), vel, OrbPhysics.MASK_WORLD | OrbPhysics.MASK_PLAYER, _exclude, Tuning.ENEMY_ORB_DAMAGE, self, Color("ff6b4a"))
+	get_parent().add_child(orb)
+	Sfx.play("enemy_shoot")
+	_scale = Vector2(1.15, 0.88)
+	return true
 
 
 func take_damage(amount: int, _source: Node = null) -> void:
@@ -92,6 +131,9 @@ func take_damage(amount: int, _source: Node = null) -> void:
 		return
 	health -= amount
 	_flash = 0.12
+	_scale = Vector2(1.25, 0.8)
+	_scale_vel = Vector2.ZERO
+	_charge = -1.0
 	if health <= 0:
 		_die()
 
@@ -117,6 +159,7 @@ func _draw() -> void:
 	var c := Color.WHITE if _flash > 0.0 else body_color
 	var w := body_size.x
 	var h := body_size.y
+	draw_set_transform(Vector2.ZERO, 0.0, _scale)
 	match style:
 		"dummy":
 			draw_rect(Rect2(-1, -16, 2, 16), Color("8a5a32"))
@@ -159,6 +202,12 @@ func _draw() -> void:
 			draw_colored_polygon(PackedVector2Array([Vector2(0, gem_y - 4), Vector2(3, gem_y), Vector2(0, gem_y + 3), Vector2(-3, gem_y)]), Color("ff9ae0"))
 			_draw_eyes(Vector2(0, -h + 8), Color.WHITE)
 
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if _charge >= 0.0:
+		var k := _charge / telegraph
+		var eye := Vector2(0, -h * 0.65 * _scale.y)
+		draw_circle(eye, 2.0 + 5.0 * k, Color(1.0, 0.42, 0.29, 0.25 + 0.35 * k))
+		draw_arc(eye, 12.0 - 8.0 * k, 0.0, TAU, 16, Color(1.0, 0.8, 0.4, 0.4 + 0.6 * k), 1.5)
 	if health < max_health and not dead:
 		var bar_w := maxf(w, 16.0)
 		var ratio := clampf(float(health) / max_health, 0.0, 1.0)
