@@ -96,7 +96,10 @@ func _physics_process(delta: float) -> void:
 	_jump_buffer = Tuning.JUMP_BUFFER if want_jump else _jump_buffer - delta
 	_coyote = Tuning.COYOTE_TIME if is_on_floor() else _coyote - delta
 
-	velocity.y = minf(velocity.y + Tuning.PLAYER_GRAVITY * delta, Tuning.MAX_FALL_SPEED)
+	var gravity := Tuning.PLAYER_GRAVITY
+	if holding_jump and absf(velocity.y) < Tuning.APEX_HANG_SPEED:
+		gravity *= Tuning.APEX_GRAVITY_SCALE
+	velocity.y = minf(velocity.y + gravity * delta, Tuning.MAX_FALL_SPEED)
 	if _jump_buffer > 0.0 and _coyote > 0.0:
 		velocity.y = Tuning.JUMP_VELOCITY
 		_jump_buffer = 0.0
@@ -107,7 +110,12 @@ func _physics_process(delta: float) -> void:
 	if velocity.y < 0.0 and not holding_jump:
 		velocity.y += Tuning.PLAYER_GRAVITY * delta
 
-	velocity.x = move_toward(velocity.x, axis * Tuning.PLAYER_SPEED, Tuning.PLAYER_ACCEL * delta)
+	var accel := Tuning.PLAYER_ACCEL
+	if absf(axis) > 0.1 and absf(velocity.x) > 1.0 and signf(axis) != signf(velocity.x):
+		accel = Tuning.PLAYER_TURN_ACCEL
+	elif absf(axis) <= 0.1 and is_on_floor():
+		accel = Tuning.PLAYER_FRICTION
+	velocity.x = move_toward(velocity.x, axis * Tuning.PLAYER_SPEED, accel * delta)
 	move_and_slide()
 	if absf(axis) > 0.1:
 		facing = 1 if axis > 0.0 else -1
