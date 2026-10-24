@@ -128,9 +128,8 @@ func show_message(text: String, duration: float = 1.6, sub: String = "") -> void
 		_message_tween.kill()
 	_message_tween = create_tween()
 	_message_tween.tween_interval(duration)
-	_message_tween.set_parallel()
 	_message_tween.tween_property(_message, "modulate:a", 0.0, 0.4)
-	_message_tween.tween_property(_sub_message, "modulate:a", 0.0, 0.4)
+	_message_tween.parallel().tween_property(_sub_message, "modulate:a", 0.0, 0.4)
 
 
 func is_menu_open() -> bool:
