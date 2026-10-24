@@ -16,6 +16,9 @@ const JUMP_VELOCITY := -330.0
 ## Near the top of a held jump gravity is reduced for a brief, floaty hang.
 const APEX_HANG_SPEED := 40.0
 const APEX_GRAVITY_SCALE := 0.6
+## Extra jumps allowed in the air (pressing jump again while airborne).
+const AIR_JUMPS := 1
+const DOUBLE_JUMP_VELOCITY := -290.0
 const COYOTE_TIME := 0.1
 const JUMP_BUFFER := 0.12
 const PLAYER_MAX_HEALTH := 100

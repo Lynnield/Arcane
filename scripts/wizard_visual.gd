@@ -7,7 +7,8 @@ extends Node2D
 ##
 ## Animations: idle breathing and blinking, run cycle with lean and robe trail,
 ## jump stretch, fall billow, landing squash with dust, turn squash, aim glow
-## and sparks, cast recoil and flash, hurt knock-back tilt, respawn sparkles.
+## and sparks, cast recoil and flash, hurt knock-back tilt, respawn sparkles,
+## and a twirl with a sparkle burst on double jump.
 
 const SKIN := Color("f1c7a0")
 const EYE := Color("1b1530")
@@ -15,6 +16,7 @@ const BEARD := Color("e8e4f0")
 const BOOT := Color("2a1f3d")
 const WAND := Color("8a5a32")
 const SQUASH_LIMIT := 0.3
+const TWIRL_TIME := 0.35
 
 var player: Player
 
@@ -33,6 +35,8 @@ var _spark_timer := 0.0
 var _last_facing := 1
 var _was_grounded := true
 var _fall_speed := 0.0
+var _prev_vy := 0.0
+var _twirl := 0.0
 
 
 func _ready() -> void:
@@ -63,6 +67,12 @@ func _process(delta: float) -> void:
 		var impact := clampf(_fall_speed / Tuning.MAX_FALL_SPEED, 0.25, 1.0)
 		_kick(Vector2(1.0 + 0.25 * impact, 1.0 - 0.25 * impact))
 		Vfx.dust(_world(), p.global_position, int(3 + 6 * impact))
+	# A sudden upward kick while already airborne is a double jump. Detecting it
+	# from velocity also animates the other phone's wizard in online duels.
+	if not grounded and not _was_grounded and p.velocity.y < _prev_vy - 150.0:
+		_on_double_jump()
+	_prev_vy = p.velocity.y
+	_twirl = maxf(_twirl - delta, 0.0)
 	if not grounded:
 		_fall_speed = maxf(p.velocity.y, 0.0)
 	_was_grounded = grounded
@@ -135,6 +145,12 @@ func _on_jumped() -> void:
 	Vfx.dust(_world(), player.global_position, 4)
 
 
+func _on_double_jump() -> void:
+	_twirl = TWIRL_TIME
+	_kick(Vector2(0.85, 1.15))
+	Vfx.sparkle(_world(), player.global_position, player.orb_color, 10)
+
+
 func _on_hurt() -> void:
 	_hurt_tilt = -0.35 * player.facing
 	_kick(Vector2(1.15, 0.85))
@@ -153,9 +169,17 @@ func _on_respawned() -> void:
 	Vfx.sparkle(_world(), player.global_position + Vector2(0, -12), player.orb_color)
 
 
+## Squash and stretch, plus the double-jump twirl (a two-turn flip on x).
+func _body_scale() -> Vector2:
+	var s := _scale
+	if _twirl > 0.0:
+		s.x *= cos((1.0 - _twirl / TWIRL_TIME) * TAU * 2.0)
+	return s
+
+
 ## Body point (feet-origin space) after squash, tilt and recoil.
 func _body(point: Vector2, offset: Vector2) -> Vector2:
-	return offset + (point * _scale).rotated(_tilt)
+	return offset + (point * _body_scale()).rotated(_tilt)
 
 
 func _draw() -> void:
@@ -174,7 +198,7 @@ func _draw() -> void:
 	if _respawn_glow > 0.0:
 		draw_circle(Vector2(0, -12), 16.0 * (1.0 - _respawn_glow / 0.6) + 6.0, Color(p.orb_color, _respawn_glow * 0.5))
 
-	draw_set_transform(offset, _tilt, _scale)
+	draw_set_transform(offset, _tilt, _body_scale())
 
 	# Feet
 	var step := sin(_run_phase) if running else 0.0

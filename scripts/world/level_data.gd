@@ -58,7 +58,7 @@ static func get_level(index: int) -> Dictionary:
 				"exit": Vector2i(68, 18),
 				"signs": [
 					[Vector2i(4, 13), "Move with the left stick (or A / D)"],
-					[Vector2i(16, 12), "Tap JUMP (or Space) to hop up"],
+					[Vector2i(16, 11), "Tap JUMP (or Space) to hop up - tap again in the air to double jump"],
 					[Vector2i(30, 11), "Touch the right side, pull BACK and release to cast"],
 					[Vector2i(44, 13), "Hit the target dummy"],
 					[Vector2i(61, 13), "Defeat every foe to open the portal"],

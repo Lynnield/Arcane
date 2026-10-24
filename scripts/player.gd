@@ -6,6 +6,7 @@ extends CharacterBody2D
 signal health_changed(current: int, maximum: int)
 signal hurt
 signal jumped
+signal double_jumped
 signal respawned
 signal died
 signal fired(origin: Vector2, velocity: Vector2)
@@ -42,6 +43,7 @@ var hurt_flash := 0.0
 var visual: WizardVisual
 
 var _coyote := 0.0
+var _air_jumps := 0
 var _jump_buffer := 0.0
 var _cooldown := 0.0
 var _remote_target := Vector2.ZERO
@@ -95,6 +97,8 @@ func _physics_process(delta: float) -> void:
 
 	_jump_buffer = Tuning.JUMP_BUFFER if want_jump else _jump_buffer - delta
 	_coyote = Tuning.COYOTE_TIME if is_on_floor() else _coyote - delta
+	if is_on_floor():
+		_air_jumps = Tuning.AIR_JUMPS
 
 	var gravity := Tuning.PLAYER_GRAVITY
 	if holding_jump and absf(velocity.y) < Tuning.APEX_HANG_SPEED:
@@ -106,6 +110,13 @@ func _physics_process(delta: float) -> void:
 		_coyote = 0.0
 		Sfx.play("jump")
 		jumped.emit()
+	elif want_jump and _coyote <= 0.0 and _air_jumps > 0:
+		# A fresh press while airborne spends one air jump.
+		velocity.y = Tuning.DOUBLE_JUMP_VELOCITY
+		_air_jumps -= 1
+		_jump_buffer = 0.0
+		Sfx.play("double_jump")
+		double_jumped.emit()
 	# Releasing jump early gives a shorter hop.
 	if velocity.y < 0.0 and not holding_jump:
 		velocity.y += Tuning.PLAYER_GRAVITY * delta
@@ -192,6 +203,7 @@ func teleport(at: Vector2) -> void:
 	global_position = at
 	_remote_target = at
 	velocity = Vector2.ZERO
+	_air_jumps = Tuning.AIR_JUMPS
 
 
 func set_remote_state(pos: Vector2, vel: Vector2, new_facing: int, is_aiming: bool, aim_vel: Vector2) -> void:
