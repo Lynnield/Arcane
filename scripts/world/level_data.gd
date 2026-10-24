@@ -9,10 +9,36 @@ const TILE := 16
 const COUNT := 5
 const HEIGHT := 23
 const NAMES := ["The First Spell", "The Broken Path", "The Moving Threat", "The Ruined Tower", "The Final Trial"]
+const GOALS := [
+	"Hit the target dummy, then enter the portal",
+	"Cross the broken path and defeat both sentries",
+	"Defeat all 6 foes - the goblins keep moving",
+	"Climb the ruined tower and defeat all 6 foes",
+	"Defeat the Guardian, then enter the portal",
+]
+## Clear time (seconds) for 3 stars; up to 1.5x par earns 2 stars.
+const PAR_TIMES := [30.0, 50.0, 85.0, 100.0, 70.0]
 
 
 static func level_name(index: int) -> String:
 	return str(NAMES[clampi(index, 1, COUNT) - 1])
+
+
+static func goal(index: int) -> String:
+	return str(GOALS[clampi(index, 1, COUNT) - 1])
+
+
+static func par_time(index: int) -> float:
+	return float(PAR_TIMES[clampi(index, 1, COUNT) - 1])
+
+
+static func stars_for(index: int, time: float) -> int:
+	var par := par_time(index)
+	if time <= par:
+		return 3
+	if time <= par * 1.5:
+		return 2
+	return 1
 
 
 ## World position of the feet of something standing in `tile`.

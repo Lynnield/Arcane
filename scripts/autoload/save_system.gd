@@ -7,6 +7,7 @@ const CORRUPT_PATH := "user://save.corrupt.cfg"
 
 var unlocked := 1
 var best_times: Dictionary = {}
+var best_stars: Dictionary = {}
 var master_volume := 0.8
 var large_text := false
 var last_ip := ""
@@ -28,10 +29,14 @@ func load_data() -> void:
 		return
 	unlocked = clampi(int(_number(cfg.get_value("progress", "unlocked", 1), 1.0)), 1, LevelData.COUNT)
 	best_times.clear()
+	best_stars.clear()
 	for i in range(1, LevelData.COUNT + 1):
 		var t := _number(cfg.get_value("best_times", "level_%d" % i, -1.0), -1.0)
 		if t > 0.0 and is_finite(t):
 			best_times[i] = t
+		var s := int(_number(cfg.get_value("best_stars", "level_%d" % i, 0), 0.0))
+		if s > 0:
+			best_stars[i] = clampi(s, 1, 3)
 	master_volume = clampf(_number(cfg.get_value("settings", "master_volume", 0.8), 0.8), 0.0, 1.0)
 	var big = cfg.get_value("settings", "large_text", false)
 	large_text = big is bool and big
@@ -44,6 +49,8 @@ func save_data() -> void:
 	cfg.set_value("progress", "unlocked", unlocked)
 	for i in best_times:
 		cfg.set_value("best_times", "level_%d" % i, best_times[i])
+	for i in best_stars:
+		cfg.set_value("best_stars", "level_%d" % i, best_stars[i])
 	cfg.set_value("settings", "master_volume", master_volume)
 	cfg.set_value("settings", "large_text", large_text)
 	cfg.set_value("settings", "last_ip", last_ip)
@@ -60,10 +67,15 @@ func get_best_time(level: int) -> float:
 	return best_times.get(level, -1.0)
 
 
-## Unlocks the next level and stores the time if it beats the record.
-## Returns true when this run is a new best.
-func record_completion(level: int, time: float) -> bool:
+func get_best_stars(level: int) -> int:
+	return best_stars.get(level, 0)
+
+
+## Unlocks the next level, keeps the most stars earned and stores the time
+## if it beats the record. Returns true when this run is a new best time.
+func record_completion(level: int, time: float, stars: int) -> bool:
 	unlocked = maxi(unlocked, mini(level + 1, LevelData.COUNT))
+	best_stars[level] = maxi(stars, get_best_stars(level))
 	var new_best := not best_times.has(level) or time < float(best_times[level])
 	if new_best:
 		best_times[level] = time
@@ -74,6 +86,7 @@ func record_completion(level: int, time: float) -> bool:
 func reset_progress() -> void:
 	unlocked = 1
 	best_times.clear()
+	best_stars.clear()
 	save_data()
 
 

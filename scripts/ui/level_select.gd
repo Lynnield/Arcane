@@ -21,6 +21,14 @@ func _ready() -> void:
 		var b := UiKit.button(text, func() -> void: Game.start_level(level), 230.0)
 		b.custom_minimum_size.y = 52 if Save.large_text else 44
 		b.disabled = not Save.is_unlocked(i)
+		if Save.is_unlocked(i):
+			var stars := StarRow.new(Save.get_best_stars(i), 6.0)
+			stars.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+			stars.offset_left = -50
+			stars.offset_right = -6
+			stars.offset_top = -7
+			stars.offset_bottom = 7
+			b.add_child(stars)
 		grid.add_child(b)
 	box.add_child(UiKit.spacer(4))
 	box.add_child(UiKit.button("Back", func() -> void: Game.goto(Game.MAIN_MENU), 160.0))

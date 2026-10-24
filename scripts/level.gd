@@ -75,7 +75,8 @@ func _ready() -> void:
 	hud.set_health(player.health, player.max_health)
 	hud.set_time(0.0)
 	_update_objective()
-	hud.show_message("%d. %s" % [level_index, LevelData.level_name(level_index)], 1.8)
+	hud.show_message("%d. %s" % [level_index, LevelData.level_name(level_index)], 2.6,
+		"Goal: " + LevelData.goal(level_index))
 	if enemies_total == 0:
 		exit_portal.unlock()
 
@@ -155,9 +156,9 @@ func _respawn() -> void:
 
 func _update_objective() -> void:
 	if enemies_left > 0:
-		hud.set_objective("Defeat enemies: %d / %d" % [enemies_total - enemies_left, enemies_total])
+		hud.set_objective("Foes defeated: %d / %d, then reach the portal" % [enemies_total - enemies_left, enemies_total])
 	else:
-		hud.set_objective("Reach the portal!")
+		hud.set_objective("Portal open - reach it!")
 
 
 func _on_enemy_defeated(_enemy: Enemy) -> void:

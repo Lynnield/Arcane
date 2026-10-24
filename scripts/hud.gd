@@ -15,6 +15,7 @@ var _rival_health: Bar
 var _time_label: Label
 var _objective: Label
 var _message: Label
+var _sub_message: Label
 var _message_tween: Tween
 var _overlay: ColorRect
 var _overlay_box: VBoxContainer
@@ -74,6 +75,13 @@ func _ready() -> void:
 	_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_message)
 
+	_sub_message = UiKit.label("", 16, UiKit.TEXT)
+	_sub_message.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_sub_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_sub_message.offset_top = 10
+	_sub_message.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_sub_message)
+
 	_overlay = ColorRect.new()
 	_overlay.color = Color(0, 0, 0, 0.6)
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -110,14 +118,19 @@ func set_objective(text: String) -> void:
 	_objective.text = text
 
 
-func show_message(text: String, duration: float = 1.6) -> void:
+## `sub` is an optional smaller line under the message (e.g. the level goal).
+func show_message(text: String, duration: float = 1.6, sub: String = "") -> void:
 	_message.text = text
+	_sub_message.text = sub
 	_message.modulate.a = 1.0
+	_sub_message.modulate.a = 1.0
 	if _message_tween:
 		_message_tween.kill()
 	_message_tween = create_tween()
 	_message_tween.tween_interval(duration)
+	_message_tween.set_parallel()
 	_message_tween.tween_property(_message, "modulate:a", 0.0, 0.4)
+	_message_tween.tween_property(_sub_message, "modulate:a", 0.0, 0.4)
 
 
 func is_menu_open() -> bool:

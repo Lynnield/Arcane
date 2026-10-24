@@ -60,10 +60,11 @@ func start_level(index: int) -> void:
 
 func finish_level(index: int, won: bool, time: float) -> void:
 	var new_best := false
+	var stars := LevelData.stars_for(index, time) if won else 0
 	if won:
-		new_best = Save.record_completion(index, time)
+		new_best = Save.record_completion(index, time, stars)
 	last_result = {
-		"mode": "campaign", "level": index, "won": won, "time": time,
+		"mode": "campaign", "level": index, "won": won, "time": time, "stars": stars,
 		"best": Save.get_best_time(index), "new_best": new_best,
 		"has_next": won and index < LevelData.COUNT,
 	}
