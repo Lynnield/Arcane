@@ -9,4 +9,5 @@ func _ready() -> void:
 	box.add_child(UiKit.button("Offline Adventure", func() -> void: Game.goto(Game.LEVEL_SELECT)))
 	box.add_child(UiKit.button("Online Duel", func() -> void: Game.goto(Game.LOBBY)))
 	box.add_child(UiKit.button("Settings", func() -> void: Game.goto(Game.SETTINGS)))
+	box.add_child(UiKit.button("Credits", func() -> void: Game.goto(Game.CREDITS)))
 	box.add_child(UiKit.button("Quit", func() -> void: get_tree().quit()))

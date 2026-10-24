@@ -72,6 +72,7 @@ static func button(text: String, action: Callable, min_width: float = 220.0) -> 
 	b.text = text
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(min_width, 44 if Save.large_text else 36)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(func() -> void:
 		Sfx.play("click")
 		action.call())
