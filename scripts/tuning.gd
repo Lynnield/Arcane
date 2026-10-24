@@ -65,3 +65,18 @@ const PVP_MAX_ACTIVE_ORBS := 3
 const PVP_ROUNDS_TO_WIN := 2
 const NET_PORT := 7777
 const NET_SEND_RATE := 30.0
+
+# Bonus duel boss: The Arcane
+const ARCANE_HEALTH := 150
+const ARCANE_ORB_DAMAGE := 25
+const LASER_DAMAGE := 15
+## Wind-up with a visible aiming line; the aim locks LASER_LOCK seconds
+## before firing, so stepping or jumping out of the line dodges it.
+const LASER_CHARGE := 0.7
+const LASER_LOCK := 0.25
+const LASER_COOLDOWN_MIN := 2.2
+const LASER_COOLDOWN_MAX := 3.2
+const TELEPORT_COOLDOWN := 1.5
+const DASH_SPEED := 420.0
+const DASH_TIME := 0.16
+const DASH_COOLDOWN := 0.9

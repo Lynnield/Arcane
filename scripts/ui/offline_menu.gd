@@ -17,5 +17,9 @@ func _ready() -> void:
 		var difficulty: int = level
 		row.add_child(UiKit.button(CpuBrain.level_name(level), func() -> void: Game.start_cpu_duel(difficulty), 94.0))
 	box.add_child(row)
+	var boss := UiKit.button("Bonus: The Arcane  ?!", func() -> void: Game.start_cpu_duel(CpuBrain.BOSS), 300.0)
+	boss.add_theme_color_override("font_color", Color("ff5c7a"))
+	boss.add_theme_color_override("font_hover_color", Color("ffd0da"))
+	box.add_child(boss)
 	box.add_child(UiKit.spacer(6))
 	box.add_child(UiKit.button("Back", func() -> void: Game.goto(Game.MAIN_MENU), 160.0))

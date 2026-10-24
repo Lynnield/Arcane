@@ -39,10 +39,16 @@ func _ready() -> void:
 	player.show_marker = true
 	add_child(player)
 
-	brain = CpuBrain.new()
+	var boss := Game.cpu_difficulty == CpuBrain.BOSS
+	brain = ArcaneBrain.new() if boss else CpuBrain.new()
 	brain.difficulty = Game.cpu_difficulty
 	add_child(brain)
-	cpu = _make_wizard(Color("c2414f"), Color("ffa36b"))
+	cpu = _make_wizard(Color("f4f1ff") if boss else Color("c2414f"), Color("ff3b8d") if boss else Color("ffa36b"))
+	if boss:
+		cpu.visual_style = "arcane"
+		cpu.max_health = Tuning.ARCANE_HEALTH
+		cpu.health = Tuning.ARCANE_HEALTH
+		cpu.orb_damage = Tuning.ARCANE_ORB_DAMAGE
 	cpu.controls = brain
 	cpu.reads_keyboard = false
 	add_child(cpu)
@@ -59,7 +65,11 @@ func _ready() -> void:
 	add_child(hud)
 	hud.restart_requested.connect(func() -> void: Game.start_cpu_duel(Game.cpu_difficulty))
 	hud.menu_requested.connect(func() -> void: Game.goto(Game.OFFLINE_MENU))
-	hud.set_objective("Duel vs Computer (%s) - first to %d rounds" % [CpuBrain.level_name(Game.cpu_difficulty), Tuning.PVP_ROUNDS_TO_WIN])
+	if boss:
+		hud.set_rival_mystery("ARCANE")
+		hud.set_objective("Bonus duel: The Arcane - first to %d rounds" % Tuning.PVP_ROUNDS_TO_WIN)
+	else:
+		hud.set_objective("Duel vs Computer (%s) - first to %d rounds" % [CpuBrain.level_name(Game.cpu_difficulty), Tuning.PVP_ROUNDS_TO_WIN])
 	_start_round()
 
 
@@ -87,6 +97,8 @@ func _start_round() -> void:
 		w.can_act = false
 	_refresh_hud()
 	hud.show_message("Round %d" % _round_number, 0.8)
+	if cpu.visual_style == "arcane":
+		cpu.visual.show_title("Da Goat", 3.0)
 	for count in ["3", "2", "1"]:
 		await get_tree().create_timer(0.7, false).timeout
 		hud.show_message(count, 0.4)

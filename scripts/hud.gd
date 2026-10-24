@@ -102,6 +102,13 @@ func set_health(current: int, maximum: int) -> void:
 	_health.set_value(current, maximum)
 
 
+## Hides the rival's health behind "?!?!?!" (bonus boss).
+func set_rival_mystery(caption: String) -> void:
+	if _rival_health:
+		_rival_health.caption = caption
+		_rival_health.mystery = true
+
+
 func set_rival_health(current: int, maximum: int) -> void:
 	if _rival_health:
 		_rival_health.set_value(current, maximum)
@@ -202,7 +209,14 @@ class Bar extends Control:
 	const WIDTH := 110.0
 	var caption := ""
 	var fill := Color.GREEN
+	var mystery := false
 	var _value := 1.0
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		if mystery:
+			_t += delta
+			queue_redraw()
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -218,6 +232,12 @@ class Bar extends Control:
 		draw_string_outline(font, Vector2(0, 10), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color("120c22"))
 		draw_string(font, Vector2(0, 10), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiKit.TEXT)
 		var bar := Rect2(38, 1, WIDTH, 10)
+		if mystery:
+			var jitter := Vector2(randf_range(-0.6, 0.6), randf_range(-0.6, 0.6))
+			var col := Color.from_hsv(fmod(_t * 0.6, 1.0), 0.7, 1.0)
+			draw_string_outline(font, Vector2(bar.position.x, 11) + jitter, "?!?!?!", HORIZONTAL_ALIGNMENT_CENTER, WIDTH, 14, 3, Color("120c22"))
+			draw_string(font, Vector2(bar.position.x, 11) + jitter, "?!?!?!", HORIZONTAL_ALIGNMENT_CENTER, WIDTH, 14, col)
+			return
 		draw_rect(bar.grow(1), Color("120c22"))
 		draw_rect(bar, Color("3a2f50"))
 		draw_rect(Rect2(bar.position, Vector2(WIDTH * _value, bar.size.y)), fill)

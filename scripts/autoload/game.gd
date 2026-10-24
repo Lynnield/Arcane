@@ -76,7 +76,7 @@ func finish_level(index: int, won: bool, time: float) -> void:
 
 
 func start_cpu_duel(difficulty: int) -> void:
-	cpu_difficulty = clampi(difficulty, 1, 3)
+	cpu_difficulty = clampi(difficulty, 1, CpuBrain.BOSS)
 	goto(CPU_DUEL)
 
 

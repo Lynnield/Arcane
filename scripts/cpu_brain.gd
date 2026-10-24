@@ -14,7 +14,9 @@ const LEVELS := {
 	1: {"name": "Easy", "cooldown": 1.8, "error": 28.0, "dodge": 0.15, "lead": 0.0, "double": 0.25, "hop": 0.15},
 	2: {"name": "Normal", "cooldown": 1.15, "error": 12.0, "dodge": 0.45, "lead": 0.6, "double": 0.6, "hop": 0.35},
 	3: {"name": "Hard", "cooldown": 0.65, "error": 4.0, "dodge": 0.8, "lead": 1.0, "double": 0.9, "hop": 0.55},
+	4: {"name": "The Arcane", "cooldown": 0.5, "error": 1.5, "dodge": 0.97, "lead": 1.0, "double": 1.0, "hop": 0.6},
 }
+const BOSS := 4
 
 var me: Player
 var foe: Player
@@ -32,7 +34,7 @@ var _double_considered := false
 
 
 static func level_name(level: int) -> String:
-	return str(LEVELS[clampi(level, 1, 3)]["name"])
+	return str(LEVELS[clampi(level, 1, BOSS)]["name"])
 
 
 func move_axis() -> float:
@@ -57,7 +59,7 @@ func _physics_process(delta: float) -> void:
 	_axis = 0.0
 	if not is_instance_valid(me) or not is_instance_valid(foe) or not me.can_act or foe.health <= 0:
 		return
-	var cfg: Dictionary = LEVELS[clampi(difficulty, 1, 3)]
+	var cfg: Dictionary = LEVELS[clampi(difficulty, 1, BOSS)]
 	var dx := foe.global_position.x - me.global_position.x
 	var dist := absf(dx)
 	var toward := signf(dx)

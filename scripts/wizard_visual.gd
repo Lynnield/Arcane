@@ -8,7 +8,9 @@ extends Node2D
 ## Animations: idle breathing and blinking, run cycle with lean and robe trail,
 ## jump stretch, fall billow, landing squash with dust, turn squash, aim glow
 ## and sparks, cast recoil and flash, hurt knock-back tilt, respawn sparkles,
-## and a twirl with a sparkle burst on double jump.
+## a twirl with a sparkle burst on double jump, dash afterimages, a title
+## banner over the head, and the "arcane" style (RGB hat, glowing white robe,
+## glowing red eyes, black boots) used by the bonus boss.
 
 const SKIN := Color("f1c7a0")
 const EYE := Color("1b1530")
@@ -38,6 +40,9 @@ var _fall_speed := 0.0
 var _prev_vy := 0.0
 var _twirl := 0.0
 var _was_ceiling := false
+var _ghosts: Array = []
+var _title := ""
+var _title_time := 0.0
 
 
 func _ready() -> void:
@@ -46,6 +51,14 @@ func _ready() -> void:
 	player.hurt.connect(_on_hurt)
 	player.fired.connect(_on_fired)
 	player.respawned.connect(_on_respawned)
+	# A teleport is not a double jump, even though velocity jumps to zero.
+	player.teleported.connect(func() -> void: _prev_vy = -INF)
+
+
+## Shows a floating title (e.g. "Da Goat") above the head for a few seconds.
+func show_title(text: String, duration: float = 2.8) -> void:
+	_title = text
+	_title_time = duration
 
 
 func _grounded() -> bool:
@@ -70,7 +83,7 @@ func _process(delta: float) -> void:
 		Vfx.dust(_world(), p.global_position, int(3 + 6 * impact))
 	# A sudden upward kick while already airborne is a double jump. Detecting it
 	# from velocity also animates the other phone's wizard in online duels.
-	if not grounded and not _was_grounded and p.velocity.y < _prev_vy - 150.0:
+	if not grounded and not _was_grounded and not p.is_dashing() and p.velocity.y < _prev_vy - 150.0:
 		_on_double_jump()
 	_prev_vy = p.velocity.y
 	var ceiling := p.is_local and p.is_on_ceiling()
@@ -79,6 +92,12 @@ func _process(delta: float) -> void:
 		Vfx.dust(_world(), p.global_position + Vector2(0, -21), 3)
 	_was_ceiling = ceiling
 	_twirl = maxf(_twirl - delta, 0.0)
+	_title_time = maxf(_title_time - delta, 0.0)
+	for g in _ghosts:
+		g["life"] -= delta
+	_ghosts = _ghosts.filter(func(g: Dictionary) -> bool: return g["life"] > 0.0)
+	if p.is_dashing():
+		_ghosts.append({"pos": p.global_position, "facing": p.facing, "life": 0.25})
 	if not grounded:
 		_fall_speed = maxf(p.velocity.y, 0.0)
 	_was_grounded = grounded
@@ -192,15 +211,35 @@ func _draw() -> void:
 	var p := player
 	var f := float(p.facing)
 	var back := -f
+	var arcane := p.visual_style == "arcane"
 	var robe := Color.WHITE if p.hurt_flash > 0.0 else p.robe_color
 	var dark := robe.darkened(0.35)
 	var light := robe.lightened(0.2)
+	var hat := robe
+	var boot := BOOT
+	var trim := p.trim_color
+	if arcane:
+		hat = Color.from_hsv(fmod(_t * 0.35, 1.0), 0.85, 1.0)
+		dark = hat.darkened(0.3)
+		boot = Color("0a0a0a")
+		trim = Color.from_hsv(fmod(_t * 0.35 + 0.5, 1.0), 0.5, 1.0)
 	var grounded := _grounded()
 	var running := grounded and absf(p.velocity.x) > 10.0
 	var speed := clampf(absf(p.velocity.x) / Tuning.PLAYER_SPEED, 0.0, 1.0)
 	var dir := _wand_dir()
 	var offset := -dir * _recoil
 
+	for g in _ghosts:
+		var gp: Vector2 = g["pos"] - p.global_position
+		var gf := float(g["facing"])
+		var ga: float = g["life"] / 0.25 * 0.45
+		var ghost := Color(hat if arcane else robe, ga)
+		draw_colored_polygon(PackedVector2Array([gp + Vector2(-6, -1), gp + Vector2(6, -1), gp + Vector2(4, -12), gp + Vector2(-4, -12)]), ghost)
+		draw_colored_polygon(PackedVector2Array([gp + Vector2(-4, -19), gp + Vector2(4, -19), gp + Vector2(-3.0 * gf, -29)]), ghost)
+	if arcane:
+		var halo := 0.16 + 0.06 * sin(_t * 4.0)
+		draw_circle(Vector2(0, -13), 15.0, Color(1, 1, 1, halo * 0.5))
+		draw_circle(Vector2(0, -13), 10.0, Color(1, 1, 1, halo))
 	if _respawn_glow > 0.0:
 		draw_circle(Vector2(0, -12), 16.0 * (1.0 - _respawn_glow / 0.6) + 6.0, Color(p.orb_color, _respawn_glow * 0.5))
 
@@ -213,8 +252,8 @@ func _draw() -> void:
 	if not grounded:
 		foot_a = Vector2(-4.0, -2.5)
 		foot_b = Vector2(1.0, -2.0)
-	draw_rect(Rect2(foot_a, Vector2(3, 1.5)), BOOT)
-	draw_rect(Rect2(foot_b, Vector2(3, 1.5)), BOOT)
+	draw_rect(Rect2(foot_a, Vector2(3, 1.5)), boot)
+	draw_rect(Rect2(foot_b, Vector2(3, 1.5)), boot)
 
 	# Robe: the back of the hem trails when running and billows when falling
 	var bob := -absf(sin(_run_phase)) * 1.2 if running else 0.0
@@ -225,16 +264,19 @@ func _draw() -> void:
 	draw_colored_polygon(PackedVector2Array([
 		hem_back, hem_front, Vector2(-back * 4.0, -12.0 + bob), Vector2(back * 4.0, -12.0 + bob)]), robe)
 	draw_line(Vector2(-back * 2.0, -11.0 + bob), Vector2(-back * 4.0, -2.0), light, 1.0)
-	draw_line(hem_back + Vector2(0, -1.5), hem_front + Vector2(0, -1.5), p.trim_color, 2.0)
-	draw_rect(Rect2(-4, -8 + bob, 8, 1), p.trim_color)
+	draw_line(hem_back + Vector2(0, -1.5), hem_front + Vector2(0, -1.5), trim, 2.0)
+	draw_rect(Rect2(-4, -8 + bob, 8, 1), trim)
 
 	# Head, blinking eye and beard
 	draw_rect(Rect2(-3, -18 + bob, 6, 6), SKIN)
 	var eye_x := 1.0 if f > 0.0 else -2.0
+	var eye := Color("ff1a1a") if arcane else EYE
+	if arcane:
+		draw_circle(Vector2(eye_x + 0.5, -15 + bob), 2.5 + 0.5 * sin(_t * 6.0), Color(1, 0.1, 0.1, 0.45))
 	if _blink > 0.0:
-		draw_rect(Rect2(eye_x - 0.5, -15 + bob, 2, 1), EYE)
+		draw_rect(Rect2(eye_x - 0.5, -15 + bob, 2, 1), eye)
 	else:
-		draw_rect(Rect2(eye_x, -16 + bob, 1, 2), EYE)
+		draw_rect(Rect2(eye_x, -16 + bob, 1, 2), eye)
 	draw_rect(Rect2(-3, -13 + bob, 6, 2), BEARD)
 	draw_rect(Rect2(-1.0 + back * 0.5 + sin(_t * 2.0) * 0.4, -11 + bob, 2, 1.5), BEARD)
 
@@ -243,10 +285,10 @@ func _draw() -> void:
 	var hat_y := -19.0 + bob + hat_lift
 	var tip := Vector2(-3.0 * f + sin(_t * 1.8) * 0.8 - clampf(p.velocity.x / Tuning.PLAYER_SPEED, -1.0, 1.0) * 1.5, -29.0 + bob + hat_lift)
 	draw_rect(Rect2(-6, hat_y, 12, 2), dark)
-	draw_colored_polygon(PackedVector2Array([Vector2(-4, hat_y), Vector2(4, hat_y), tip]), robe)
+	draw_colored_polygon(PackedVector2Array([Vector2(-4, hat_y), Vector2(4, hat_y), tip]), hat)
 	var star := Vector2(0, hat_y).lerp(tip, 0.45)
 	var twinkle := 1.0 + 0.5 * absf(sin(_t * 3.0))
-	draw_rect(Rect2(star - Vector2(twinkle, twinkle) / 2.0, Vector2(twinkle, twinkle)), p.trim_color)
+	draw_rect(Rect2(star - Vector2(twinkle, twinkle) / 2.0, Vector2(twinkle, twinkle)), Color.WHITE if arcane else trim)
 
 	# Arm and wand: drawn unscaled so the tip matches Player.wand_tip() exactly
 	var shoulder := _body(Vector2(2.5 * f, -10.0 + bob), offset)
@@ -265,8 +307,40 @@ func _draw() -> void:
 	if _cast_flash > 0.0:
 		var k := 1.0 - _cast_flash / 0.12
 		draw_arc(tip_pos, 3.0 + k * 9.0, 0.0, TAU, 16, Color(1, 1, 1, 1.0 - k), 2.0)
+	if p.special_charge > 0.0:
+		var c := p.special_charge
+		draw_circle(tip_pos, 2.0 + c * 6.0, Color(1.0, 0.23, 0.36, 0.25 + 0.4 * c))
+		draw_arc(tip_pos, 14.0 - c * 10.0, 0.0, TAU, 16, Color(1, 1, 1, c), 1.5)
+
+	if p.laser_aim != Vector2.ZERO:
+		_draw_laser_sight(p)
+
+	if _title_time > 0.0:
+		var font := ThemeDB.fallback_font
+		var a := clampf(_title_time / 0.4, 0.0, 1.0)
+		var y := -46.0 + sin(_t * 3.0) * 1.5
+		var col := Color.from_hsv(fmod(_t * 0.5, 1.0), 0.6, 1.0) if arcane else UiKit.GOLD
+		draw_string_outline(font, Vector2(-40, y), _title, HORIZONTAL_ALIGNMENT_CENTER, 80, 11, 4, Color(0.07, 0.05, 0.13, a))
+		draw_string(font, Vector2(-40, y), _title, HORIZONTAL_ALIGNMENT_CENTER, 80, 11, Color(col, a))
 
 	if p.show_marker:
 		var y := -36.0 + sin(_t * 4.0)
 		draw_colored_polygon(PackedVector2Array([
 			Vector2(-3, y), Vector2(3, y), Vector2(0, y + 4)]), UiKit.GOLD)
+
+
+## Boss laser warning: a faint dashed line while aiming, a bright blinking
+## line once the aim has locked (that is the moment to get out of the way).
+func _draw_laser_sight(p: Player) -> void:
+	var from := p.wand_tip(p.laser_aim)
+	var query := PhysicsRayQueryParameters2D.create(from, from + p.laser_aim * 900.0, OrbPhysics.MASK_WORLD)
+	var hit := p.get_world_2d().direct_space_state.intersect_ray(query)
+	var to: Vector2 = hit.position if not hit.is_empty() else from + p.laser_aim * 900.0
+	var a := from - p.global_position
+	var b := to - p.global_position
+	if p.laser_locked:
+		var blink := 0.55 + 0.45 * absf(sin(_t * 30.0))
+		draw_line(a, b, Color(1.0, 0.23, 0.36, 0.35 * blink), 4.0)
+		draw_line(a, b, Color(1.0, 0.85, 0.9, blink), 1.0)
+	else:
+		draw_dashed_line(a, b, Color(1.0, 0.23, 0.36, 0.45 + 0.2 * sin(_t * 12.0)), 1.0, 4.0)

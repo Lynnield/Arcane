@@ -8,6 +8,7 @@ signal hurt
 signal jumped
 signal double_jumped
 signal respawned
+signal teleported
 signal died
 signal fired(origin: Vector2, velocity: Vector2)
 
@@ -17,6 +18,8 @@ const WAND_LENGTH := 8.0
 
 @export var robe_color := Color("6b4fd8")
 @export var trim_color := Color("f2c14e")
+## "default" or "arcane" (the bonus boss look). Visual only.
+@export var visual_style := "default"
 
 var max_health := Tuning.PLAYER_MAX_HEALTH
 var health := Tuning.PLAYER_MAX_HEALTH
@@ -40,10 +43,18 @@ var aim_velocity := Vector2.ZERO
 var invulnerable := 0.0
 ## Seconds left of the white hit flash (read by WizardVisual).
 var hurt_flash := 0.0
+## 0..1 wind-up glow for special attacks (the boss laser). Visual only.
+var special_charge := 0.0
+## Direction of the boss laser while it winds up (ZERO when not aiming one),
+## and whether that aim has locked. Visual only.
+var laser_aim := Vector2.ZERO
+var laser_locked := false
 var visual: WizardVisual
 
 var _coyote := 0.0
 var _air_jumps := 0
+var _dash_time := 0.0
+var _dash_dir := 0.0
 var _jump_buffer := 0.0
 var _cooldown := 0.0
 var _remote_target := Vector2.ZERO
@@ -94,6 +105,13 @@ func _physics_process(delta: float) -> void:
 			axis = controls.move_axis()
 		want_jump = want_jump or touch_jump
 		holding_jump = holding_jump or (controls != null and controls.jump_held)
+
+	if _dash_time > 0.0:
+		_dash_time -= delta
+		velocity = Vector2(_dash_dir * Tuning.DASH_SPEED, 0.0)
+		move_and_slide()
+		_update_aim()
+		return
 
 	_jump_buffer = Tuning.JUMP_BUFFER if want_jump else _jump_buffer - delta
 	_coyote = Tuning.COYOTE_TIME if is_on_floor() else _coyote - delta
@@ -187,8 +205,20 @@ func try_fire(drag: Vector2) -> void:
 		get_parent().add_child(orb)
 
 
+## Short horizontal burst; the wizard cannot be hurt while dashing.
+func dash(direction: float) -> void:
+	_dash_dir = signf(direction)
+	_dash_time = Tuning.DASH_TIME
+	facing = 1 if _dash_dir > 0.0 else -1
+	Sfx.play("dash")
+
+
+func is_dashing() -> bool:
+	return _dash_time > 0.0
+
+
 func take_damage(amount: int, _source: Node = null) -> void:
-	if invulnerable > 0.0 or health <= 0:
+	if invulnerable > 0.0 or health <= 0 or is_dashing():
 		return
 	set_health(health - amount)
 
@@ -221,6 +251,8 @@ func teleport(at: Vector2) -> void:
 	_remote_target = at
 	velocity = Vector2.ZERO
 	_air_jumps = Tuning.AIR_JUMPS
+	_dash_time = 0.0
+	teleported.emit()
 
 
 func set_remote_state(pos: Vector2, vel: Vector2, new_facing: int, is_aiming: bool, aim_vel: Vector2) -> void:
