@@ -35,12 +35,13 @@ var facing := 1
 var aiming := false
 var aim_velocity := Vector2.ZERO
 var invulnerable := 0.0
+## Seconds left of the white hit flash (read by WizardVisual).
+var hurt_flash := 0.0
+var visual: WizardVisual
 
 var _coyote := 0.0
 var _jump_buffer := 0.0
 var _cooldown := 0.0
-var _hurt_flash := 0.0
-var _anim := 0.0
 var _remote_target := Vector2.ZERO
 var _exclude: Array[RID] = []
 var _preview: TrajectoryPreview
@@ -58,21 +59,22 @@ func _ready() -> void:
 	_exclude.append(get_rid())
 	_preview = TrajectoryPreview.new()
 	add_child(_preview)
+	visual = WizardVisual.new()
+	visual.player = self
+	add_child(visual)
 	_remote_target = global_position
 	if controls:
 		controls.fire_requested.connect(try_fire)
 
 
 func _physics_process(delta: float) -> void:
-	_anim += delta
 	invulnerable = maxf(invulnerable - delta, 0.0)
-	_hurt_flash = maxf(_hurt_flash - delta, 0.0)
+	hurt_flash = maxf(hurt_flash - delta, 0.0)
 	_cooldown = maxf(_cooldown - delta, 0.0)
 	modulate.a = 0.35 if invulnerable > 0.0 and int(invulnerable * 12.0) % 2 == 0 else 1.0
 
 	if not is_local:
 		global_position = global_position.lerp(_remote_target, minf(1.0, delta * 15.0))
-		queue_redraw()
 		return
 
 	var axis := 0.0
@@ -107,7 +109,6 @@ func _physics_process(delta: float) -> void:
 	if absf(axis) > 0.1:
 		facing = 1 if axis > 0.0 else -1
 	_update_aim()
-	queue_redraw()
 
 
 func _update_aim() -> void:
@@ -157,7 +158,7 @@ func set_health(value: int) -> void:
 	var previous := health
 	health = clampi(value, 0, max_health)
 	if health < previous:
-		_hurt_flash = 0.15
+		hurt_flash = 0.15
 		Sfx.play("hurt")
 		hurt.emit()
 	health_changed.emit(health, max_health)
@@ -187,40 +188,3 @@ func set_remote_state(pos: Vector2, vel: Vector2, new_facing: int, is_aiming: bo
 	facing = 1 if new_facing >= 0 else -1
 	aiming = is_aiming
 	aim_velocity = aim_vel
-
-
-func _draw() -> void:
-	var f := float(facing)
-	var robe := Color.WHITE if _hurt_flash > 0.0 else robe_color
-	var dark := robe.darkened(0.35)
-	var skin := Color("f1c7a0")
-	var bob := 0.0
-	if absf(velocity.x) > 10.0 and absf(velocity.y) < 1.0 and int(_anim * 10.0) % 2 == 0:
-		bob = -1.0
-
-	# Robe and feet
-	draw_rect(Rect2(-4, -1, 3, 1), Color("2a1f3d"))
-	draw_rect(Rect2(1, -1, 3, 1), Color("2a1f3d"))
-	draw_colored_polygon(PackedVector2Array([
-		Vector2(-6, -1), Vector2(6, -1), Vector2(4, -12 + bob), Vector2(-4, -12 + bob)]), robe)
-	draw_rect(Rect2(-6, -3, 12, 2), trim_color)
-	draw_rect(Rect2(-4, -8 + bob, 8, 1), trim_color)
-	# Head
-	draw_rect(Rect2(-3, -18 + bob, 6, 6), skin)
-	draw_rect(Rect2(1.0 if f > 0.0 else -2.0, -16 + bob, 1, 2), Color("1b1530"))
-	draw_rect(Rect2(-3, -13 + bob, 6, 2), Color("e8e4f0"))
-	# Hat
-	draw_rect(Rect2(-6, -19 + bob, 12, 2), dark)
-	draw_colored_polygon(PackedVector2Array([
-		Vector2(-4, -19 + bob), Vector2(4, -19 + bob), Vector2(-3.0 * f, -29 + bob)]), robe)
-	draw_rect(Rect2(-1.0 * f - 0.5, -24 + bob, 1, 1), trim_color)
-	# Wand
-	var dir := aim_velocity.normalized() if aiming and aim_velocity != Vector2.ZERO else Vector2(0.6 * f, -0.8).normalized()
-	var hand := Vector2(HAND.x * f, HAND.y + bob)
-	draw_line(hand, hand + dir * WAND_LENGTH, Color("8a5a32"), 2.0)
-	var glow := orb_color if aiming else orb_color.darkened(0.3)
-	draw_circle(hand + dir * WAND_LENGTH, 3.0 if aiming else 2.0, Color(glow, 0.5))
-	draw_circle(hand + dir * WAND_LENGTH, 1.2, Color.WHITE)
-	if show_marker:
-		draw_colored_polygon(PackedVector2Array([
-			Vector2(-3, -36), Vector2(3, -36), Vector2(0, -32)]), Color("f2c14e"))
