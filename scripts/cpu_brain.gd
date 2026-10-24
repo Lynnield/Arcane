@@ -7,11 +7,13 @@ extends Node
 signal fire_requested(drag: Vector2)
 
 ## Per difficulty: seconds between shots, aim error (px), chance to hop over
-## an incoming orb, and how much it leads a moving target.
+## an incoming orb, how much it leads a moving target, and how often it uses
+## its double jump (dodging in mid-air, climbing toward the player, or at random),
+## and random hops per second so it is a moving target.
 const LEVELS := {
-	1: {"name": "Easy", "cooldown": 1.8, "error": 28.0, "dodge": 0.15, "lead": 0.0},
-	2: {"name": "Normal", "cooldown": 1.15, "error": 12.0, "dodge": 0.45, "lead": 0.6},
-	3: {"name": "Hard", "cooldown": 0.65, "error": 4.0, "dodge": 0.8, "lead": 1.0},
+	1: {"name": "Easy", "cooldown": 1.8, "error": 28.0, "dodge": 0.15, "lead": 0.0, "double": 0.25, "hop": 0.15},
+	2: {"name": "Normal", "cooldown": 1.15, "error": 12.0, "dodge": 0.45, "lead": 0.6, "double": 0.6, "hop": 0.35},
+	3: {"name": "Hard", "cooldown": 0.65, "error": 4.0, "dodge": 0.8, "lead": 1.0, "double": 0.9, "hop": 0.55},
 }
 
 var me: Player
@@ -25,6 +27,8 @@ var _fire_timer := 1.2
 var _think := 0.0
 var _strafe := 0.0
 var _dodge_cooldown := 0.0
+var _double_used := false
+var _double_considered := false
 
 
 static func level_name(level: int) -> String:
@@ -71,6 +75,8 @@ func _physics_process(delta: float) -> void:
 		_axis = _strafe
 	if me.is_on_floor() and (me.is_on_wall() or (foe.global_position.y < me.global_position.y - 40.0 and randf() < 0.02)):
 		_jump = true
+	elif me.is_on_floor() and randf() < float(cfg["hop"]) * delta:
+		_jump = true
 
 	_dodge_cooldown -= delta
 	if _dodge_cooldown <= 0.0 and me.is_on_floor() and _orb_incoming():
@@ -78,9 +84,35 @@ func _physics_process(delta: float) -> void:
 		if randf() < cfg["dodge"]:
 			_jump = true
 
+	_think_double(cfg)
+
 	_fire_timer -= delta
 	if _fire_timer <= 0.0:
 		_fire_timer = float(cfg["cooldown"]) * randf_range(0.8, 1.2) if _try_fire(cfg, dist) else 0.3
+
+
+## Decides once per airborne arc, near the top of the jump, whether to spend
+## the air jump: to dodge an orb, to reach a higher foe, or just to mix it up.
+func _think_double(cfg: Dictionary) -> void:
+	if me.is_on_floor():
+		_double_used = false
+		_double_considered = false
+		return
+	if _double_used or me.velocity.y < -80.0:
+		return
+	var chance := float(cfg["double"])
+	if _orb_incoming():
+		if randf() < chance:
+			_jump = true
+			_double_used = true
+		return
+	if _double_considered:
+		return
+	_double_considered = true
+	var foe_above := foe.global_position.y < me.global_position.y - 24.0
+	if (foe_above and randf() < chance) or randf() < chance * 0.3:
+		_jump = true
+		_double_used = true
 
 
 func _orb_incoming() -> bool:
