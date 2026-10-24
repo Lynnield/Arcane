@@ -1,7 +1,7 @@
 class_name Hud
 extends CanvasLayer
 ## In-game HUD: health, timer, objective, centre messages and the pause menu.
-## mode "campaign" pauses the tree; mode "pvp" shows a menu without pausing.
+## mode "campaign" and "cpu" pause the tree; "pvp" shows a menu without pausing.
 
 signal restart_requested
 signal menu_requested
@@ -31,7 +31,7 @@ func _ready() -> void:
 	add_child(_root)
 
 	_health = Bar.new()
-	_health.caption = "YOU" if mode == "pvp" else "HP"
+	_health.caption = "HP" if mode == "campaign" else "YOU"
 	_health.fill = Color("5fe08a")
 	_health.position = Vector2(10, 10)
 	_root.add_child(_health)
@@ -43,13 +43,14 @@ func _ready() -> void:
 
 	_objective = UiKit.label("", 14)
 	_objective.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_objective.offset_top = 6
+	# Duels show a health bar on each side, so the objective sits below them.
+	_objective.offset_top = 6 if mode == "campaign" else 30
 	_objective.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_objective)
 
-	if mode == "pvp":
+	if mode != "campaign":
 		_rival_health = Bar.new()
-		_rival_health.caption = "RIVAL"
+		_rival_health.caption = "RIVAL" if mode == "pvp" else "CPU"
 		_rival_health.fill = Color("ff6b6b")
 		_rival_health.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 		_rival_health.offset_left = -Bar.WIDTH - 100
@@ -142,7 +143,7 @@ func toggle_pause() -> void:
 		return
 	if not allow_pause:
 		return
-	if mode == "campaign":
+	if mode != "pvp":
 		get_tree().paused = true
 	_show_pause_menu()
 
@@ -169,7 +170,7 @@ func _show_pause_menu() -> void:
 
 func resume() -> void:
 	_overlay.visible = false
-	if mode == "campaign":
+	if mode != "pvp":
 		get_tree().paused = false
 
 
@@ -193,7 +194,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
-		if mode == "campaign" and allow_pause and not _overlay.visible:
+		if mode != "pvp" and allow_pause and not _overlay.visible:
 			toggle_pause()
 
 

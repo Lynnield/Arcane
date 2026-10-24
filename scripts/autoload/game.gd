@@ -9,8 +9,11 @@ const CREDITS := "res://scenes/ui/credits.tscn"
 const LOBBY := "res://scenes/ui/lobby.tscn"
 const RESULTS := "res://scenes/ui/results.tscn"
 const PVP_ARENA := "res://scenes/pvp_arena.tscn"
+const OFFLINE_MENU := "res://scenes/ui/offline_menu.tscn"
+const CPU_DUEL := "res://scenes/cpu_duel.tscn"
 
 var current_level := 1
+var cpu_difficulty := 2
 var last_result: Dictionary = {}
 
 
@@ -69,6 +72,16 @@ func finish_level(index: int, won: bool, time: float) -> void:
 		"best": Save.get_best_time(index), "new_best": new_best,
 		"has_next": won and index < LevelData.COUNT,
 	}
+	goto(RESULTS)
+
+
+func start_cpu_duel(difficulty: int) -> void:
+	cpu_difficulty = clampi(difficulty, 1, 3)
+	goto(CPU_DUEL)
+
+
+func finish_cpu_duel(won: bool, my_rounds: int, their_rounds: int) -> void:
+	last_result = {"mode": "cpu", "won": won, "my_rounds": my_rounds, "their_rounds": their_rounds, "difficulty": cpu_difficulty}
 	goto(RESULTS)
 
 

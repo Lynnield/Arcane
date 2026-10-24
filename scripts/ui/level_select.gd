@@ -35,4 +35,4 @@ func _ready() -> void:
 			b.add_child(stars)
 		grid.add_child(b)
 	box.add_child(UiKit.spacer(4))
-	box.add_child(UiKit.button("Back", func() -> void: Game.goto(Game.MAIN_MENU), 160.0))
+	box.add_child(UiKit.button("Back", func() -> void: Game.goto(Game.OFFLINE_MENU), 160.0))

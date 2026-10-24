@@ -26,6 +26,14 @@ func _ready() -> void:
 			box.add_child(UiKit.button("Next Level", func() -> void: Game.start_level(level + 1)))
 		box.add_child(UiKit.button("Retry", func() -> void: Game.start_level(level)))
 		box.add_child(UiKit.button("Menu", func() -> void: Game.goto(Game.LEVEL_SELECT)))
+	elif r["mode"] == "cpu":
+		var difficulty: int = r["difficulty"]
+		box.add_child(UiKit.label("Victory!" if won else "Defeat", 34, UiKit.GOLD if won else Color("ff7a7a")))
+		box.add_child(UiKit.label("Duel vs Computer (%s)" % CpuBrain.level_name(difficulty), 16, UiKit.MUTED))
+		box.add_child(UiKit.label("Rounds  %d - %d" % [r["my_rounds"], r["their_rounds"]], 18))
+		box.add_child(UiKit.spacer(8))
+		box.add_child(UiKit.button("Rematch", func() -> void: Game.start_cpu_duel(difficulty)))
+		box.add_child(UiKit.button("Menu", func() -> void: Game.goto(Game.OFFLINE_MENU)))
 	else:
 		box.add_child(UiKit.label("Victory!" if won else "Defeat", 34, UiKit.GOLD if won else Color("ff7a7a")))
 		box.add_child(UiKit.label("Rounds  %d - %d" % [r["my_rounds"], r["their_rounds"]], 18))

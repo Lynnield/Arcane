@@ -16,7 +16,10 @@ const WAND_LENGTH := 8.0
 
 var max_health := Tuning.PLAYER_MAX_HEALTH
 var health := Tuning.PLAYER_MAX_HEALTH
-var controls: TouchControls
+## TouchControls for the player, or a CpuBrain for the computer wizard.
+var controls: Node
+## False for the computer wizard so the keyboard only moves the player.
+var reads_keyboard := true
 var is_local := true
 var can_act := true
 var show_marker := false
@@ -74,13 +77,16 @@ func _physics_process(delta: float) -> void:
 	var axis := 0.0
 	var want_jump := false
 	var holding_jump := false
-	var touch_jump := controls != null and controls.consume_jump()
+	var touch_jump: bool = controls != null and controls.consume_jump()
 	if can_act:
-		axis = Input.get_axis("move_left", "move_right")
+		if reads_keyboard:
+			axis = Input.get_axis("move_left", "move_right")
+			want_jump = Input.is_action_just_pressed("jump")
+			holding_jump = Input.is_action_pressed("jump")
 		if controls and is_zero_approx(axis):
 			axis = controls.move_axis()
-		want_jump = Input.is_action_just_pressed("jump") or touch_jump
-		holding_jump = Input.is_action_pressed("jump") or (controls != null and controls.jump_held)
+		want_jump = want_jump or touch_jump
+		holding_jump = holding_jump or (controls != null and controls.jump_held)
 
 	_jump_buffer = Tuning.JUMP_BUFFER if want_jump else _jump_buffer - delta
 	_coyote = Tuning.COYOTE_TIME if is_on_floor() else _coyote - delta

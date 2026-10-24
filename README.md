@@ -1,7 +1,9 @@
 # Arcane
 
 A 2D pixel-art wizard platformer for Android, built with Godot 4.7 (GL Compatibility renderer).
-Single-player campaign with five levels plus a 1v1 duel over local Wi-Fi.
+
+- **Play Offline:** a five-level adventure, where clearing a level unlocks the next and earns 1–3 stars for clear time. There is also a best-of-three duel against a computer wizard (Easy, Normal or Hard).
+- **Play Online:** a best-of-three duel against a second phone on the same Wi-Fi.
 
 ## Running
 
