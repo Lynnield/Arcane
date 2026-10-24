@@ -89,6 +89,7 @@ func _make_player(id: int, tile: Vector2i, color: Color) -> void:
 	if p.is_local:
 		p.controls = controls
 		p.fired.connect(_on_local_fired)
+		p.hurt.connect(func() -> void: ScreenShake.shake(get_viewport().get_camera_2d()))
 	add_child(p)
 	players[id] = p
 

@@ -4,6 +4,7 @@ extends CharacterBody2D
 ## player is driven by network state. Origin is at the feet.
 
 signal health_changed(current: int, maximum: int)
+signal hurt
 signal died
 signal fired(origin: Vector2, velocity: Vector2)
 
@@ -158,6 +159,7 @@ func set_health(value: int) -> void:
 	if health < previous:
 		_hurt_flash = 0.15
 		Sfx.play("hurt")
+		hurt.emit()
 	health_changed.emit(health, max_health)
 	if health == 0 and previous > 0:
 		died.emit()

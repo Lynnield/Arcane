@@ -72,6 +72,7 @@ func _ready() -> void:
 	hud.menu_requested.connect(func() -> void: Game.goto(Game.MAIN_MENU))
 	player.health_changed.connect(hud.set_health)
 	player.died.connect(_on_player_died)
+	player.hurt.connect(func() -> void: ScreenShake.shake(camera))
 	hud.set_health(player.health, player.max_health)
 	hud.set_time(0.0)
 	_update_objective()

@@ -26,10 +26,31 @@ func unlock() -> void:
 		return
 	locked = false
 	Sfx.play("unlock")
+	_burst()
 	# The wizard may already be standing in the portal.
 	for body in get_overlapping_bodies():
 		if body is Player:
 			_emit_reached.call_deferred()
+
+
+func _burst() -> void:
+	var particles := CPUParticles2D.new()
+	particles.position = Vector2(0, -17)
+	particles.one_shot = true
+	particles.explosiveness = 1.0
+	particles.amount = 32
+	particles.lifetime = 0.8
+	particles.direction = Vector2.UP
+	particles.spread = 180.0
+	particles.initial_velocity_min = 40.0
+	particles.initial_velocity_max = 110.0
+	particles.gravity = Vector2(0, 120)
+	particles.scale_amount_min = 2.0
+	particles.scale_amount_max = 3.0
+	particles.color = Color("5fe0ff")
+	particles.finished.connect(particles.queue_free)
+	add_child(particles)
+	particles.emitting = true
 
 
 func _emit_reached() -> void:

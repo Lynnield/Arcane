@@ -13,6 +13,7 @@ var cpu: Player
 var brain: CpuBrain
 var hud: Hud
 var controls: TouchControls
+var camera: Camera2D
 var my_rounds := 0
 var cpu_rounds := 0
 var round_active := false
@@ -27,7 +28,7 @@ func _ready() -> void:
 	var data := LevelData.arena()
 	WorldBuilder.build(self, data["solids"], data["width"], data["palette"], false)
 	_spawns = data["spawns"]
-	var camera := Camera2D.new()
+	camera = Camera2D.new()
 	camera.position = Vector2(data["width"] * TILE / 2.0, LevelData.HEIGHT * TILE / 2.0)
 	add_child(camera)
 
@@ -47,6 +48,7 @@ func _ready() -> void:
 	add_child(cpu)
 	brain.me = cpu
 	brain.foe = player
+	player.hurt.connect(func() -> void: ScreenShake.shake(camera))
 
 	for w in [player, cpu]:
 		w.health_changed.connect(func(_c: int, _m: int) -> void: _refresh_hud())

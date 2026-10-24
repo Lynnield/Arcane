@@ -75,8 +75,17 @@ static func button(text: String, action: Callable, min_width: float = 220.0) -> 
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(func() -> void:
 		Sfx.play("click")
+		_bounce(b)
 		action.call())
 	return b
+
+
+## Quick squash-and-return on tap.
+static func _bounce(control: Control) -> void:
+	control.pivot_offset = control.size / 2.0
+	var tween := control.create_tween()
+	tween.tween_property(control, "scale", Vector2(0.93, 0.93), 0.05)
+	tween.tween_property(control, "scale", Vector2.ONE, 0.08)
 
 
 ## wrap_width > 0 wraps the text at that width (labels in containers need one).
