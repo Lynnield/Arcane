@@ -18,9 +18,13 @@ func _ready() -> void:
 		else:
 			text += "\nLocked"
 		var level := i
-		var b := UiKit.button(text, func() -> void: Game.start_level(level), 230.0)
+		var b := UiKit.button(text, func() -> void: Game.start_level(level), 270.0)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.custom_minimum_size.y = 52 if Save.large_text else 44
 		b.disabled = not Save.is_unlocked(i)
+		if b.disabled:
+			b.icon = UiKit.lock_icon()
+			b.add_theme_color_override("icon_disabled_color", Color.WHITE)
 		if Save.is_unlocked(i):
 			var stars := StarRow.new(Save.get_best_stars(i), 6.0)
 			stars.set_anchors_preset(Control.PRESET_CENTER_RIGHT)

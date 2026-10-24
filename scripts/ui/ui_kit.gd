@@ -9,6 +9,7 @@ const ACCENT := Color("7b5cff")
 
 static var _theme: Theme
 static var _theme_large := false
+static var _lock_icon: ImageTexture
 
 
 static func theme() -> Theme:
@@ -95,3 +96,38 @@ static func spacer(height: float) -> Control:
 	var c := Control.new()
 	c.custom_minimum_size = Vector2(0, height)
 	return c
+
+
+## Pixel-art padlock (generated, so no image file is needed).
+static func lock_icon() -> ImageTexture:
+	if _lock_icon:
+		return _lock_icon
+	var rows := [
+		"....####....",
+		"...#....#...",
+		"..#......#..",
+		"..#......#..",
+		"..#......#..",
+		"############",
+		"#GGGGGGGGGG#",
+		"#GGGGddGGGG#",
+		"#GGGGddGGGG#",
+		"#GGGGGdGGGG#",
+		"#GGGGGdGGGG#",
+		"#GGGGGGGGGG#",
+		"############",
+	]
+	var img := Image.create(12, rows.size(), false, Image.FORMAT_RGBA8)
+	for y in rows.size():
+		var row: String = rows[y]
+		for x in row.length():
+			match row[x]:
+				"#":
+					img.set_pixel(x, y, Color("b9b0d8"))
+				"G":
+					img.set_pixel(x, y, GOLD.darkened(0.15))
+				"d":
+					img.set_pixel(x, y, Color("3a2f50"))
+	img.resize(24, rows.size() * 2, Image.INTERPOLATE_NEAREST)
+	_lock_icon = ImageTexture.create_from_image(img)
+	return _lock_icon
