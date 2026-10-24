@@ -144,16 +144,27 @@ func toggle_pause() -> void:
 		return
 	if mode == "campaign":
 		get_tree().paused = true
-		show_menu("Paused", [
-			["Resume", resume],
-			["Restart", func() -> void: restart_requested.emit()],
-			["Menu", func() -> void: menu_requested.emit()],
-		])
+	_show_pause_menu()
+
+
+func _show_pause_menu() -> void:
+	var items := [["Resume", resume]]
+	if mode == "pvp":
+		items.append(["Leave Match", func() -> void: menu_requested.emit()])
 	else:
-		show_menu("Duel", [
-			["Resume", resume],
-			["Leave Match", func() -> void: menu_requested.emit()],
-		])
+		items.append(["Restart", func() -> void: restart_requested.emit()])
+	items.append(["Sound: " + ("On" if Save.sound_on else "Off"), func() -> void:
+		Save.sound_on = not Save.sound_on
+		Save.save_data()
+		_show_pause_menu()])
+	items.append(["Music: " + ("On" if Save.music_on else "Off"), func() -> void:
+		Save.music_on = not Save.music_on
+		Save.save_data()
+		Sfx.update_music()
+		_show_pause_menu()])
+	if mode != "pvp":
+		items.append(["Quit to Menu", func() -> void: menu_requested.emit()])
+	show_menu("Paused" if mode != "pvp" else "Duel", items)
 
 
 func resume() -> void:

@@ -22,6 +22,15 @@ func _ready() -> void:
 	box.add_child(slider)
 	_update_volume_label()
 
+	box.add_child(_toggle("Sound effects", Save.sound_on, func(on: bool) -> void:
+		Save.sound_on = on
+		Save.save_data()
+		Sfx.play("click")))
+	box.add_child(_toggle("Music", Save.music_on, func(on: bool) -> void:
+		Save.music_on = on
+		Save.save_data()
+		Sfx.update_music()))
+
 	var big := CheckButton.new()
 	big.text = "Large text"
 	big.button_pressed = Save.large_text
@@ -32,6 +41,15 @@ func _ready() -> void:
 	_reset_button = UiKit.button("Reset Progress", _on_reset)
 	box.add_child(_reset_button)
 	box.add_child(UiKit.button("Back", func() -> void: Game.goto(Game.MAIN_MENU)))
+
+
+func _toggle(text: String, on: bool, action: Callable) -> CheckButton:
+	var check := CheckButton.new()
+	check.text = text
+	check.button_pressed = on
+	check.focus_mode = Control.FOCUS_NONE
+	check.toggled.connect(action)
+	return check
 
 
 func _on_volume_changed(value: float) -> void:

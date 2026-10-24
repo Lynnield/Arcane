@@ -9,6 +9,8 @@ var unlocked := 1
 var best_times: Dictionary = {}
 var best_stars: Dictionary = {}
 var master_volume := 0.8
+var sound_on := true
+var music_on := true
 var large_text := false
 var last_ip := ""
 
@@ -40,6 +42,10 @@ func load_data() -> void:
 	master_volume = clampf(_number(cfg.get_value("settings", "master_volume", 0.8), 0.8), 0.0, 1.0)
 	var big = cfg.get_value("settings", "large_text", false)
 	large_text = big is bool and big
+	var sfx = cfg.get_value("settings", "sound_on", true)
+	sound_on = not (sfx is bool) or sfx
+	var music = cfg.get_value("settings", "music_on", true)
+	music_on = not (music is bool) or music
 	var ip = cfg.get_value("settings", "last_ip", "")
 	last_ip = ip if ip is String else ""
 
@@ -53,6 +59,8 @@ func save_data() -> void:
 		cfg.set_value("best_stars", "level_%d" % i, best_stars[i])
 	cfg.set_value("settings", "master_volume", master_volume)
 	cfg.set_value("settings", "large_text", large_text)
+	cfg.set_value("settings", "sound_on", sound_on)
+	cfg.set_value("settings", "music_on", music_on)
 	cfg.set_value("settings", "last_ip", last_ip)
 	var err := cfg.save(PATH)
 	if err != OK:
