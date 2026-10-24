@@ -5,6 +5,8 @@ extends CharacterBody2D
 
 signal health_changed(current: int, maximum: int)
 signal hurt
+signal jumped
+signal respawned
 signal died
 signal fired(origin: Vector2, velocity: Vector2)
 
@@ -100,6 +102,7 @@ func _physics_process(delta: float) -> void:
 		_jump_buffer = 0.0
 		_coyote = 0.0
 		Sfx.play("jump")
+		jumped.emit()
 	# Releasing jump early gives a shorter hop.
 	if velocity.y < 0.0 and not holding_jump:
 		velocity.y += Tuning.PLAYER_GRAVITY * delta
@@ -174,6 +177,7 @@ func reset_health() -> void:
 func respawn(at: Vector2) -> void:
 	teleport(at)
 	invulnerable = Tuning.RESPAWN_PROTECTION
+	respawned.emit()
 
 
 func teleport(at: Vector2) -> void:
