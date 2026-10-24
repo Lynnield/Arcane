@@ -127,6 +127,8 @@ func _physics_process(delta: float) -> void:
 	elif absf(axis) <= 0.1 and is_on_floor():
 		accel = Tuning.PLAYER_FRICTION
 	velocity.x = move_toward(velocity.x, axis * Tuning.PLAYER_SPEED, accel * delta)
+	if velocity.y < 0.0:
+		_correct_corner(delta)
 	move_and_slide()
 	if absf(axis) > 0.1:
 		facing = 1 if axis > 0.0 else -1
@@ -142,6 +144,21 @@ func _update_aim() -> void:
 	if absf(aim_velocity.x) > 1.0:
 		facing = 1 if aim_velocity.x > 0.0 else -1
 	_preview.show_path(wand_tip(aim_velocity), aim_velocity, orb_mask, _exclude)
+
+
+## If rising into the edge of a ceiling, nudge sideways (up to CORNER_CORRECTION
+## px) so the head slips past the corner instead of killing the jump.
+func _correct_corner(delta: float) -> void:
+	var up := Vector2(0.0, velocity.y * delta)
+	if not test_move(global_transform, up):
+		return
+	var sides := [1.0, -1.0] if velocity.x >= 0.0 else [-1.0, 1.0]
+	for dist in range(1, Tuning.CORNER_CORRECTION + 1):
+		for side in sides:
+			var shift := Vector2(side * dist, 0.0)
+			if not test_move(global_transform, shift) and not test_move(global_transform.translated(shift), up):
+				global_position += shift
+				return
 
 
 ## Where the orb spawns: the tip of the wand, pointing along `direction`.

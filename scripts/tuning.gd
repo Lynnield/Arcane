@@ -20,6 +20,9 @@ const APEX_GRAVITY_SCALE := 0.6
 const AIR_JUMPS := 1
 const DOUBLE_JUMP_VELOCITY := -290.0
 const COYOTE_TIME := 0.1
+## A rising jump that clips a ceiling corner by up to this many pixels slides
+## around it instead of stopping dead.
+const CORNER_CORRECTION := 6
 const JUMP_BUFFER := 0.12
 const PLAYER_MAX_HEALTH := 100
 

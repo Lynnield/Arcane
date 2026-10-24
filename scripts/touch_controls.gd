@@ -87,8 +87,13 @@ func _joy_home() -> Vector2:
 	return Vector2(68, _screen().y - 64)
 
 
+## Generous hit area: the circle plus extra margin, and the screen corner
+## beyond the button, so a thumb that lands slightly off still jumps.
 func _in_jump(p: Vector2) -> bool:
-	return p.distance_to(_jump_center()) <= JUMP_RADIUS + 10.0
+	var c := _jump_center()
+	if p.distance_to(c) <= JUMP_RADIUS + 18.0:
+		return true
+	return p.x >= c.x - 8.0 and p.y >= c.y - 8.0
 
 
 func _input(event: InputEvent) -> void:

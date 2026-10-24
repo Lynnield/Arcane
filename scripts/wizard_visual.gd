@@ -37,6 +37,7 @@ var _was_grounded := true
 var _fall_speed := 0.0
 var _prev_vy := 0.0
 var _twirl := 0.0
+var _was_ceiling := false
 
 
 func _ready() -> void:
@@ -72,6 +73,11 @@ func _process(delta: float) -> void:
 	if not grounded and not _was_grounded and p.velocity.y < _prev_vy - 150.0:
 		_on_double_jump()
 	_prev_vy = p.velocity.y
+	var ceiling := p.is_local and p.is_on_ceiling()
+	if ceiling and not _was_ceiling:
+		_kick(Vector2(1.15, 0.85))
+		Vfx.dust(_world(), p.global_position + Vector2(0, -21), 3)
+	_was_ceiling = ceiling
 	_twirl = maxf(_twirl - delta, 0.0)
 	if not grounded:
 		_fall_speed = maxf(p.velocity.y, 0.0)
