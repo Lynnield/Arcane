@@ -11,3 +11,9 @@ func _ready() -> void:
 	box.add_child(UiKit.button("Settings", func() -> void: Game.goto(Game.SETTINGS)))
 	box.add_child(UiKit.button("Credits", func() -> void: Game.goto(Game.CREDITS)))
 	box.add_child(UiKit.button("Quit", func() -> void: get_tree().quit()))
+
+	var version := UiKit.label("Version %s" % ProjectSettings.get_setting("application/config/version"), 12, UiKit.MUTED)
+	add_child(version)
+	version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	version.offset_top = -22.0
+	version.offset_bottom = -6.0
