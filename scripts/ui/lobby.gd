@@ -24,7 +24,8 @@ func _ready() -> void:
 	_ip_edit.placeholder_text = "Host IP, e.g. 192.168.1.5"
 	_ip_edit.text = Save.last_ip
 	_ip_edit.custom_minimum_size = Vector2(210, 36)
-	_ip_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL
+	# Not NUMBER_DECIMAL: Android's decimal keyboard allows only one ".".
+	_ip_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_URL
 	_ip_edit.text_submitted.connect(func(_t: String) -> void: _join())
 	row.add_child(_ip_edit)
 	_join_button = UiKit.button("Join", _join, 90.0)
