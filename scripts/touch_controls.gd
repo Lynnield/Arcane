@@ -1,6 +1,6 @@
 class_name TouchControls
 extends CanvasLayer
-## Multitouch input: floating joystick (left), jump button (bottom right) and
+## Multitouch input: fixed joystick (bottom left), jump button (bottom right) and
 ## pull-back aiming (anywhere else on the right). A finger belongs to the
 ## control it started on until it lifts, so controls never steal each other's
 ## touches. The jump button area can never start an aim, and releasing an aim
@@ -84,7 +84,7 @@ func _jump_center() -> Vector2:
 
 
 func _joy_home() -> Vector2:
-	return Vector2(68, _screen().y - 64)
+	return Vector2(120, _screen().y - 70)
 
 
 ## Generous hit area: the circle plus extra margin, and the screen corner
@@ -118,9 +118,10 @@ func _press(index: int, p: Vector2) -> void:
 			_jump_queued = true
 			jump_held = true
 	elif p.x < s.x * LEFT_ZONE:
+		# The joystick stays put: any touch on the left drives it from home.
 		if _joy_index == -1:
 			_joy_index = index
-			_joy_origin = p
+			_joy_origin = _joy_home()
 			_joy_pos = p
 	elif _aim_index == -1:
 		_aim_index = index
@@ -131,10 +132,6 @@ func _press(index: int, p: Vector2) -> void:
 func _drag(index: int, p: Vector2) -> void:
 	if index == _joy_index:
 		_joy_pos = p
-		# The base follows a finger that slides past the rim.
-		var offset := _joy_pos - _joy_origin
-		if offset.length() > JOY_RADIUS:
-			_joy_origin = _joy_pos - offset.normalized() * JOY_RADIUS
 	elif index == _aim_index:
 		_aim_pos = p
 
