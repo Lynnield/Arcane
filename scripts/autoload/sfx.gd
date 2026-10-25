@@ -4,6 +4,7 @@ extends Node
 
 const RATE := 22050
 const MUSIC_VOLUME_DB := -10.0
+const MUSIC_LOOP_PAD := 64
 
 var _sounds: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
@@ -85,7 +86,9 @@ func _make_music() -> AudioStreamWAV:
 	var note_len := 0.25
 	var total := int(chords.size() * chord_len * RATE)
 	var data := PackedByteArray()
-	data.resize(total * 2)
+	# Samples past loop_end: the mixer's interpolation reads ahead of the play
+	# position, and on Android reading past the buffer end crashes at the loop.
+	data.resize((total + MUSIC_LOOP_PAD) * 2)
 	var lead_phase := 0.0
 	var bass_phase := 0.0
 	for i in total:
@@ -101,6 +104,8 @@ func _make_music() -> AudioStreamWAV:
 		var tri := 4.0 * absf(fmod(bass_phase, 1.0) - 0.5) - 1.0
 		var bass := tri * 0.22
 		data.encode_s16(i * 2, int(clampf(lead + bass, -1.0, 1.0) * 32767.0))
+	for i in MUSIC_LOOP_PAD:
+		data.encode_s16((total + i) * 2, data.decode_s16(i * 2))
 	var wav := _wav(data, true)
 	wav.loop_end = total
 	return wav
